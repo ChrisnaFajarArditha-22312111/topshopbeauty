@@ -42,7 +42,7 @@
 
 **Topshop Beauty AI** hadir mentransformasi toko kosmetik fisik ternama di Bandar Lampung (**Topshop Kosmetik**, Jl. Raden Intan) menuju ekosistem digital e-commerce cerdas dengan menggabungkan:
 
-1. **Airbnb-Grade UI/UX**: Tampilan visual storefront modern, micro-interactions halus dengan GSAP, dan *Floating Search Capsule* 3-dimensi (Nama Produk/Brand, Jenis Kulit, Masalah Kulit).
+1. **Modern & Intuitive Storefront UI/UX**: Tampilan visual storefront modern, micro-interactions halus dengan GSAP, dan *Floating Search Capsule* 3-dimensi (Nama Produk/Brand, Jenis Kulit, Masalah Kulit).
 2. **AI Beauty Advisor Berbasis RAG (Retrieval-Augmented Generation)**: Konsultan kecantikan virtual 24/7 bertenaga LLM Qwen 2.5 yang menganalisis kebutuhan kulit personal, mencocokkan bahan aktif (*active ingredients*), serta menyematkan rekomendasi produk interaktif langsung di dalam balon chat.
 3. **Logistik & Pembayaran Indonesia Terintegrasi**: Sinkronisasi stok real-time, kalkulasi ongkir multi-ekspedisi resmi via Biteship (JNE, SiCepat, J&T), pembayaran instan QRIS & Virtual Account via Mayar Payment Gateway, serta pelacakan resi kurir *live tracking*.
 
@@ -56,8 +56,8 @@
 - **Safety Guardrails & Medical Disclaimer**: Dilengkapi *Input & Output Guard* untuk menyaring topik non-skincare dan menyertakan batasan konsultasi medis.
 - **In-Chat Interactive Action**: Kartu produk interaktif muncul langsung di balon percakapan, lengkap dengan harga, kecocokan kulit, dan tombol instan *“+ Keranjang”*.
 
-### 🛍️ 2. Katalog Modern & Airbnb Search Capsule
-- **Floating Search Capsule**: Navigasi pencarian dinamis 3-segmen ala Airbnb (Nama Produk/Brand, Jenis Kulit, Masalah Kulit/Budget).
+### 🛍️ 2. Katalog Modern & Floating Search Capsule
+- **Floating Search Capsule**: Navigasi pencarian dinamis 3-segmen terintegrasi (Nama Produk/Brand, Jenis Kulit, Masalah Kulit/Budget).
 - **Multi-Facet Filtering**: Filter instan berdasarkan Kategori (Skincare, Makeup, Bodycare, Haircare), Brand, Rentang Harga, Tipe Kulit (Berminyak, Kering, Kombinasi, Sensitif, Normal), dan Masalah Kulit.
 - **Detail Produk Transparan**: Panel kandungan bahan aktif (*ingredients breakdown*), panduan cara pakai, sertifikasi BPOM/Halal, dan rating ulasan pembeli terverifikasi.
 
@@ -86,7 +86,7 @@
 ```mermaid
 flowchart TD
     subgraph Client["Frontend Layer (Next.js 15)"]
-        UI["Modern Airbnb UI / Tailwind CSS"]
+        UI["Modern Storefront UI / Tailwind CSS"]
         Advisor["AI Beauty Advisor Interface"]
         AdminUI["Backoffice Dashboard"]
         Query["TanStack Query + Axios Client"]
@@ -147,7 +147,7 @@ flowchart TD
 | Layer | Teknologi | Deskripsi |
 |---|---|---|
 | **Frontend Framework** | [Next.js 15](https://nextjs.org/) (App Router, React 19) | Server & Client Components berkecepatan tinggi |
-| **Styling & Design** | [Tailwind CSS v3.4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/) | Sistem desain minimalis Airbnb-style |
+| **Styling & Design** | [Tailwind CSS v3.4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/) | Sistem desain modern, bersih & minimalis |
 | **Animation** | [GSAP](https://greensock.com/gsap/) & [Lucide Icons](https://lucide.dev/) | Micro-interactions dan transisi scroll halus |
 | **State & API Cache** | [TanStack React Query v5](https://tanstack.com/query) | Optimistic updates & auto cache invalidation |
 | **Backend Framework** | [FastAPI](https://fastapi.tiangolo.com/) (Python 3.12/3.11) | Async web framework berperforma tinggi |
