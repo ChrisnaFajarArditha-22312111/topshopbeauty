@@ -1,0 +1,57 @@
+# =========================================================
+# .dockerignore — Backend Topshop Kosmetik AI
+# File dan folder yang tidak perlu disalin ke Docker image
+# =========================================================
+
+# Virtual environment Python
+venv/
+env/
+ENV/
+.venv/
+
+# File environment (sensitif!)
+.env
+.env.*
+*.env
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Dokumentasi
+*.md
+docs/
+
+# Docker files (tidak perlu di dalam image)
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Temporary
+*.tmp
+*.temp
+tmp/
+temp/

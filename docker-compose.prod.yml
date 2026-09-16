@@ -1,0 +1,89 @@
+version: "3.9"
+
+# =========================================================
+# Docker Compose — Production Deployment (Alibaba Cloud ECS)
+# Topshop Kosmetik AI
+# =========================================================
+
+services:
+  # -------------------------------------------------------
+  # PostgreSQL Database + pgvector Extension
+  # -------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: topshop_postgres_prod
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - topshop_prod_network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: 768M
+
+  # -------------------------------------------------------
+  # Backend API (FastAPI + Uvicorn)
+  # -------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: topshop_backend_prod
+    restart: always
+    env_file:
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - topshop_prod_network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips="*"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.9'
+          memory: 1024M
+
+  # -------------------------------------------------------
+  # Reverse Proxy (Nginx + Cloudflare Real IP + Rate Limiting)
+  # -------------------------------------------------------
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: topshop_nginx_prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - backend
+    networks:
+      - topshop_prod_network
+
+# =========================================================
+# Volumes & Networks
+# =========================================================
+volumes:
+  postgres_prod_data:
+    driver: local
+
+networks:
+  topshop_prod_network:
+    driver: bridge
