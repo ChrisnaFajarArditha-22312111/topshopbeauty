@@ -6,7 +6,8 @@
   ### *The Next-Gen Intelligent Skincare Commerce & Hyper-Personalized AI Advisor*
 
   <p align="center">
-    <strong>Belanja Skincare Cerdas Didukung AI RAG, Rekomendasi Dermatologis Real-time, dan Logistik Indonesia Terintegrasi.</strong>
+    <strong>Rancang Bangun Website E-Commerce Topshop Kosmetik untuk Konsultasi Produk Kosmetik Berbasis Kecerdasan Buatan</strong><br />
+    <em>Studi Kasus: Toko Fisik Topshop Kosmetik Bandar Lampung</em>
   </p>
 
   <p align="center">
@@ -21,6 +22,8 @@
   </p>
 
   <p align="center">
+    <a href="https://topshopbeauty.cloud" target="_blank">🌐 Live Storefront</a> •
+    <a href="https://api.topshopbeauty.cloud/docs" target="_blank">⚡ Swagger API</a> •
     <a href="#-fitur-unggulan">✨ Fitur Utama</a> •
     <a href="#-arsitektur-sistem">📐 Arsitektur</a> •
     <a href="#-tech-stack">💻 Tech Stack</a> •
@@ -33,46 +36,47 @@
 
 ---
 
-## 💡 The Startup Vision
+## 💡 The Startup Vision & Latar Belakang
 
-> **"73% konsumen skincare merasa bingung memilih produk yang tepat untuk tipe & kondisi kulit mereka, sementara katalog kosmetik umum tidak menawarkan konsultasi bahan aktif personal."**
+> **"73% konsumen skincare merasa bingung memilih produk yang tepat untuk tipe & masalah kulit mereka. Sementara itu, katalog kosmetik umum hanya menampilkan daftar produk tanpa edukasi bahan aktif (*ingredients*) yang sesuai dengan profil kulit pembeli."**
 
-**Topshop Beauty AI** mendisrupsi pengalaman belanja kosmetik tradisional di Indonesia dengan menggabungkan:
-1. **Airbnb-Grade UI/UX**: Pengalaman visual elegan, micro-interactions halus dengan GSAP, dan *Floating Search Capsule* 3-dimensi (Nama/Brand, Tipe Kulit, Masalah Kulit).
-2. **AI Beauty Advisor Berbasis RAG (Retrieval-Augmented Generation)**: Konsultan virtual 24/7 bertenaga LLM Qwen yang memahami profil biologis kulit pengguna, mencocokkan bahan aktif (*active ingredients*), dan menyematkan rekomendasi produk interaktif langsung di dalam chat.
-3. **End-to-End E-Commerce Engine**: Sinkronisasi stok real-time, kalkulasi ongkir multi-ekspedisi live via Biteship (JNE, SiCepat, J&T), pembayaran instan QRIS & Virtual Account via Mayar, serta sistem review pembeli terverifikasi.
+**Topshop Beauty AI** hadir mentransformasi toko kosmetik fisik ternama di Bandar Lampung (**Topshop Kosmetik**, Jl. Raden Intan) menuju ekosistem digital e-commerce cerdas dengan menggabungkan:
+
+1. **Airbnb-Grade UI/UX**: Tampilan visual storefront modern, micro-interactions halus dengan GSAP, dan *Floating Search Capsule* 3-dimensi (Nama Produk/Brand, Jenis Kulit, Masalah Kulit).
+2. **AI Beauty Advisor Berbasis RAG (Retrieval-Augmented Generation)**: Konsultan kecantikan virtual 24/7 bertenaga LLM Qwen 2.5 yang menganalisis kebutuhan kulit personal, mencocokkan bahan aktif (*active ingredients*), serta menyematkan rekomendasi produk interaktif langsung di dalam balon chat.
+3. **Logistik & Pembayaran Indonesia Terintegrasi**: Sinkronisasi stok real-time, kalkulasi ongkir multi-ekspedisi resmi via Biteship (JNE, SiCepat, J&T), pembayaran instan QRIS & Virtual Account via Mayar Payment Gateway, serta pelacakan resi kurir *live tracking*.
 
 ---
 
 ## ✨ Fitur Unggulan
 
 ### 🧠 1. AI Beauty Advisor & Smart Recommendation
-- **Personalized Skin Consultation**: Pengguna dapat berdiskusi santai dalam bahasa Indonesia natural mengenai jerawat, hiperpigmentasi, barrier kulit, atau kulit sensitif.
-- **RAG Vector Search**: Pencarian kemiripan produk memanfaatkan `pgvector` berdimensi tinggi untuk merekomendasikan formulasi kosmetik yang paling presisi.
-- **Safety Guardrails & Medical Disclaimer**: Dilengkapi *Input & Output Guard* untuk menyaring pertanyaan non-skincare dan menyertakan batasan konsultasi medis.
+- **Personalized Skin Consultation**: Pengguna dapat berdiskusi santai dalam bahasa Indonesia natural mengenai jerawat, *skin barrier*, flek hitam, minyak berlebih, atau kulit sensitif.
+- **RAG Vector Search**: Pencarian kemiripan produk memanfaatkan `pgvector` berdimensi tinggi untuk merekomendasikan formulasi kosmetik yang paling presisi dari katalog internal toko.
+- **Safety Guardrails & Medical Disclaimer**: Dilengkapi *Input & Output Guard* untuk menyaring topik non-skincare dan menyertakan batasan konsultasi medis.
 - **In-Chat Interactive Action**: Kartu produk interaktif muncul langsung di balon percakapan, lengkap dengan harga, kecocokan kulit, dan tombol instan *“+ Keranjang”*.
 
 ### 🛍️ 2. Katalog Modern & Airbnb Search Capsule
-- **Floating Search Capsule**: Navigasi pencarian dinamis 3-segmen ala Airbnb (Nama Produk/Brand, Jenis Kulit, Masalah Kulit).
-- **Multi-Facet Filtering**: Filter instan berdasarkan Kategori, Brand, Rentang Harga, Tipe Kulit (Berminyak, Kering, Kombinasi, Sensitif, Normal), dan Masalah Kulit.
-- **Detail Transparan**: Panel kandungan bahan aktif (*ingredients breakdown*), panduan cara pakai, dan rating kepuasan pembeli terverifikasi.
+- **Floating Search Capsule**: Navigasi pencarian dinamis 3-segmen ala Airbnb (Nama Produk/Brand, Jenis Kulit, Masalah Kulit/Budget).
+- **Multi-Facet Filtering**: Filter instan berdasarkan Kategori (Skincare, Makeup, Bodycare, Haircare), Brand, Rentang Harga, Tipe Kulit (Berminyak, Kering, Kombinasi, Sensitif, Normal), dan Masalah Kulit.
+- **Detail Produk Transparan**: Panel kandungan bahan aktif (*ingredients breakdown*), panduan cara pakai, sertifikasi BPOM/Halal, dan rating ulasan pembeli terverifikasi.
 
 ### 💳 3. Checkout 4-Langkah & Logistik Indonesia
 - **Seamless Multi-Step Checkout**: Alur 4 tahap intuitif: *Buku Alamat ➔ Pilihan Kurir ➔ Voucher Diskon ➔ Konfirmasi Pembayaran*.
-- **Live Biteship Rates**: Tarik ongkir resmi real-time dari berbagai kurir (JNE Reg/YES, SiCepat BEST/GOKIL, J&T EZ) berdasarkan berat dan koordinat alamat.
-- **Mayar Payment Gateway**: Pembayaran aman seketika via QRIS (semua e-wallet), Virtual Account BCA, Mandiri, BNI, BRI, dan konfirmasi webhook otomatis.
+- **Live Biteship Rates**: Tarik ongkir resmi real-time dari berbagai kurir (JNE Reg/YES, SiCepat BEST/GOKIL, J&T EZ) berdasarkan berat dan koordinat alamat pengiriman.
+- **Mayar Payment Gateway**: Pembayaran aman seketika via QRIS (GoPay, OVO, Dana, ShopeePay, LinkAja) dan Virtual Account (BCA, Mandiri, BNI, BRI) dengan notifikasi webhook otomatis.
 - **Live Tracking Resi**: Timeline pelacakan kurir terintegrasi langsung di akun pengguna.
 
 ### 🛡️ 4. Enterprise-Grade Security & Resilience
-- **Idempotency Key Protection**: Mencegah *double-charge* transaksi checkout saat koneksi tidak stabil.
-- **Distributed Rate Limiting**: Perlindungan endpoint API dari brute-force dan spam scraping.
-- **Silent JWT Refresh**: Akses token diperbarui secara transparan di background tanpa membuat pengguna logout tiba-tiba.
+- **Idempotency Key Protection**: Mencegah transaksi checkout ganda (*double-charge*) saat koneksi internet tidak stabil.
+- **Distributed Rate Limiting**: Perlindungan endpoint API dari ancaman brute-force dan spam scraping.
+- **Silent JWT Refresh**: Akses token diperbarui secara transparan di background tanpa membuat sesi pengguna terputus tiba-tiba.
 - **Strict Role-Based Access Control (RBAC)**: Proteksi penuh antara level *Customer* dan *Admin Backoffice*.
 
 ### 📊 5. Backoffice Control Tower (Admin Dashboard)
-- **Ringkasan KPI Real-time**: Grafik omset harian, total order, total customer, dan tren produk terlaris.
-- **Katalog & Stok**: CRUD produk lengkap dengan upload foto, tagging taksonomi kulit, dan kontrol inventori.
-- **Manajemen Pesanan**: Input nomor resi pengiriman, verifikasi status pembayaran, dan pembatalan pesanan.
+- **Ringkasan KPI Real-time**: Grafik omset penjualan harian, total order, total customer, dan tren produk terlaris.
+- **Katalog & Stok**: CRUD produk lengkap dengan upload foto, tagging taksonomi kecantikan, dan kontrol inventori.
+- **Manajemen Pesanan**: Input nomor resi pengiriman kurir, verifikasi status pembayaran, dan kontrol pembatalan.
 - **Voucher Promosi**: Buat kode promo dengan batasan kuota, minimal belanja, dan periode kedaluwarsa.
 
 ---
@@ -187,6 +191,9 @@ flowchart TD
 ├── deploy/                   # 🚀 Skrip Nginx, SSL, dan backup produksi
 ├── docker/                   # Inisialisasi database Postgres & pgvector
 ├── docs/                     # 📚 Dokumentasi lengkap, API contracts, & User Guide
+│   ├── apis/                 # Spesifikasi endpoint & kontrak API
+│   ├── deployment/           # Panduan setup VPS, DNS, Cloudflare, Vercel
+│   └── guide/                # Buku panduan pengguna (Bab 1 s/d Bab 7)
 └── scripts/                  # 🛠️ Utility scripts (start, stop, seed, deploy)
 ```
 
@@ -262,14 +269,25 @@ Untuk melihat panduan skenario uji coba lengkap dari kacamata pengguna, silakan 
 
 ---
 
+## 🏢 Lokasi & Toko Fisik Mitra
+
+- **Nama Toko**: Topshop Kosmetik Bandar Lampung
+- **Alamat**: Jl. Raden Intan, Tanjung Karang Pusat, Kota Bandar Lampung, Lampung
+- **Jam Operasional**: Setiap Hari (08.00 - 21.00 WIB)
+- **Website Resmi**: [https://topshopbeauty.cloud](https://topshopbeauty.cloud)
+- **Kontak & Layanan**: `mail@topshopbeauty.cloud`
+
+---
+
 ## 👨‍💻 Tentang Pengembang
 
-Proyek ini dirancang dan dikembangkan dengan dedikasi tinggi oleh:
+Proyek ini dirancang dan dikembangkan untuk penyelesaian tugas akhir/skripsi:
 
 - **Nama**: Chrisna Fajar Arditha
 - **NPM**: 22312111
 - **Program Studi**: S1 Informatika
-- **Institusi**: [Universitas Teknokrat Indonesia](https://teknokrat.ac.id/)
+- **Fakultas**: Fakultas Teknik dan Ilmu Komputer (FTIK)
+- **Institusi**: [Universitas Teknokrat Indonesia](https://teknokrat.ac.id/) (*ASEAN's Best Private University*)
 - **Email**: [chrisna_fajar_arditha@teknokrat.ac.id](mailto:chrisna_fajar_arditha@teknokrat.ac.id)
 - **GitHub**: [@ChrisnaFajarArditha-22312111](https://github.com/ChrisnaFajarArditha-22312111)
 
@@ -280,5 +298,5 @@ Proyek ini dirancang dan dikembangkan dengan dedikasi tinggi oleh:
 Didistribusikan di bawah Lisensi **MIT**. Lihat file [`LICENSE`](LICENSE) untuk informasi lebih lanjut.
 
 <div align="center">
-  <sub>Dibuat dengan ❤️ untuk merevolusi industri kecantikan & e-commerce kosmetik Indonesia.</sub>
+  <sub>Dibuat dengan dedikasi tinggi untuk merevolusi industri kecantikan & e-commerce kosmetik Indonesia.</sub>
 </div>
