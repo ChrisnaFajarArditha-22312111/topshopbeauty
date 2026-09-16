@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40">
+  <rect width="120" height="40" rx="4" fill="#FF6600"/>
+  <text x="60" y="24" font-family="Arial Black, Arial" font-weight="900" font-size="11" fill="white" text-anchor="middle" letter-spacing="0.5">SiCepat</text>
+  <text x="60" y="36" font-family="Arial" font-size="8" fill="white" text-anchor="middle" letter-spacing="1">EKSPRES</text>
+</svg>

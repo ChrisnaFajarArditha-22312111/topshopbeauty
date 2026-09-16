@@ -1,0 +1,195 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans), Inter, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+  --font-heading: var(--font-geist-sans), Inter, sans-serif;
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Topshop Brand Custom Colors (Harmonized with Logo Pink Muda & Rose Gradient) */
+  --color-navy-800: #253654;
+  --color-navy-950: #17243D;
+  --color-rose-500: #D83F5E;
+  --color-rose-600: #C83253;
+  --color-plum-600: #C83253;
+  --color-plum-400: #F5949C;
+  --color-blush-100: #FDE8EB;
+  --color-blush-200: #FAB7B9;
+  --color-pink-soft: #FFF0F2;
+  --color-cream-50: #FFF8F9;
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-full: 9999px;
+}
+
+:root {
+  /* Soft Rose-Tinted Cream Main Background */
+  --background: #FFF9FA;
+  --foreground: #253654;
+
+  --card: #FFFFFF;
+  --card-foreground: #253654;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #253654;
+
+  /* Primary Logo Rose Pink */
+  --primary: #D83F5E;
+  --primary-foreground: #FFFFFF;
+
+  /* Pink Muda / Soft Blush Secondary */
+  --secondary: #FDE8EB;
+  --secondary-foreground: #C83253;
+
+  --muted: #FAF0F2;
+  --muted-foreground: #70636B;
+
+  --accent: #FCE4E7;
+  --accent-foreground: #C83253;
+
+  --destructive: #E11D48;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #F2D8DC;
+  --input: #F2D8DC;
+  --ring: #D83F5E;
+
+  --radius: 1rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* ===== CUSTOM SCROLLBAR — Elegant Topshop Rose Style ===== */
+
+  /* Global scrollbar — semua elemen */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: #FAB7B9; /* blush-200 — soft rose */
+    border-radius: 9999px;
+    transition: background-color 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #D83F5E; /* primary rose — on hover */
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #FAB7B9 transparent;
+  }
+}
+
+/* ===== SCROLLBAR UTILITIES ===== */
+
+/* .scrollbar-none — sembunyikan scrollbar (untuk horizontal carousels) */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* .scrollbar-thin — scrollbar sangat tipis 4px untuk panel kecil */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+/* ===== SHIMMER ANIMATION ===== */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ===== FLOAT ANIMATION (for empty state illustrations) ===== */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+
+.animate-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-shimmer::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 1.5s infinite;
+  content: "";
+  pointer-events: none;
+}
+

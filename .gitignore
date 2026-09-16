@@ -36,9 +36,9 @@ parts/
 var/
 sdist/
 develop-eggs/
-.installed.cfg
-lib/
-lib64/
+/lib/
+/lib64/
+!frontend/lib/
 wheels/
 share/python-wheels/
 *.manifest
