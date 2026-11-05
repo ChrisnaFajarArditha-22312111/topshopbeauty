@@ -60,6 +60,10 @@ export default function ProductDetailPage() {
   }, [product]);
 
   const [selectedImage, setSelectedImage] = React.useState<string>("");
+  const displayImage =
+    selectedImage ||
+    allImages[0] ||
+    "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&q=80";
   const [isMainImageLoaded, setIsMainImageLoaded] = React.useState<boolean>(false);
   const [quantity, setQuantity] = React.useState<number>(1);
 
@@ -240,15 +244,17 @@ export default function ProductDetailPage() {
                 <div className="absolute inset-0 z-0 bg-stone-200/75 animate-pulse" />
               )}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={selectedImage}
-                alt=""
-                aria-label={product.nama_produk}
-                className={`w-full h-full object-cover object-center transition-all duration-500 group-hover:scale-105 relative z-0 ${
-                  isMainImageLoaded ? "opacity-100" : "opacity-0"
-                }`}
-                onLoad={() => setIsMainImageLoaded(true)}
-              />
+              {displayImage && (
+                <img
+                  src={displayImage}
+                  alt=""
+                  aria-label={product.nama_produk}
+                  className={`w-full h-full object-cover object-center transition-all duration-500 group-hover:scale-105 relative z-0 ${
+                    isMainImageLoaded ? "opacity-100" : "opacity-0"
+                  }`}
+                  onLoad={() => setIsMainImageLoaded(true)}
+                />
+              )}
 
               {/* DISCOUNT BADGE */}
               {product.diskon_persen && (
