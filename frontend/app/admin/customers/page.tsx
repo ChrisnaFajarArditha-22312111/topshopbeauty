@@ -20,9 +20,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminCustomers, useUpdateCustomerStatus } from "@/features/admin/useAdmin";
+import { useAuth } from "@/features/auth/useAuth";
 import { formatRupiah, formatDate } from "@/lib/utils";
 
 export default function AdminCustomersPage() {
+  const { user: currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const { data: customers, isLoading, isError, refetch, isFetching } = useAdminCustomers();
   const updateStatusMutation = useUpdateCustomerStatus();
@@ -172,20 +174,30 @@ export default function AdminCustomersPage() {
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
-                      <button
-                        onClick={() => handleToggleActive(user.id, user.is_active)}
-                        disabled={updateStatusMutation.isPending}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all border ${
-                          user.is_active
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                            : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
-                        }`}
-                      >
+                      {currentUser?.id === user.id ? (
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${user.is_active ? "bg-emerald-500" : "bg-rose-500"}`}
-                        />
-                        {user.is_active ? "Aktif" : "Non-aktif"}
-                      </button>
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed"
+                          title="Anda tidak dapat menonaktifkan akun Admin Anda sendiri"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          Aktif (Anda)
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleActive(user.id, user.is_active)}
+                          disabled={updateStatusMutation.isPending}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all border ${
+                            user.is_active
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                              : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${user.is_active ? "bg-emerald-500" : "bg-rose-500"}`}
+                          />
+                          {user.is_active ? "Aktif" : "Non-aktif"}
+                        </button>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 text-slate-400">{formatDate(user.created_at)}</td>
                     <td className="py-3.5 px-4 text-right">
