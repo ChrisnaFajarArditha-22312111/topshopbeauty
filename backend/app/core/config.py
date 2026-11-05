@@ -83,6 +83,13 @@ class Settings(BaseSettings):
     BITESHIP_WEBHOOK_HEADER: str = "X-Webhook-Secret"
 
     # -------------------------------------------------------
+    # Supabase Storage
+    # -------------------------------------------------------
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+    SUPABASE_STORAGE_BUCKET: str = "product-images"
+
+    # -------------------------------------------------------
     # CORS
     # -------------------------------------------------------
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
