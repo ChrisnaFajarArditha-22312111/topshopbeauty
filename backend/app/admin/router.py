@@ -5,12 +5,13 @@ Semua endpoint dalam router ini diproteksi oleh RBAC dependency: require_admin
 """
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import require_admin
 from app.auth.schemas import MessageResponse
+from app.admin.storage import upload_product_image
 from app.products.schemas import (
     ProductDetailResponse,
     CategoryResponse,
@@ -38,6 +39,30 @@ from app.admin.schemas import (
 from app.admin import service
 
 router = APIRouter(dependencies=[Depends(require_admin)])
+
+
+# =========================================================
+# 0. Upload Gambar ke Supabase Storage
+# =========================================================
+@router.post(
+    "/upload/image",
+    summary="Upload Gambar Produk ke Supabase Storage",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_image(
+    file: UploadFile = File(..., description="File gambar produk (JPEG, PNG, WebP, GIF — maks 5 MB)"),
+):
+    """
+    Upload gambar produk ke Supabase Storage bucket.
+
+    - Validasi tipe file (hanya gambar: JPEG, PNG, WebP, GIF)
+    - Validasi ukuran maksimum 5 MB
+    - File disimpan dengan nama unik (UUID) agar tidak tabrakan
+    - Kembalikan URL publik yang langsung bisa digunakan di field `foto_utama`
+    """
+    public_url = await upload_product_image(file)
+    return {"url": public_url, "message": "Gambar berhasil diupload"}
 
 
 # =========================================================
@@ -161,8 +186,22 @@ async def update_customer_status(
     user_id: uuid.UUID,
     data: CustomerStatusUpdate,
     db: AsyncSession = Depends(get_db),
+    admin_user: dict = Depends(require_admin),
 ):
     """Mengaktifkan/menonaktifkan akun customer atau memberikan hak akses Admin."""
+    current_admin_id = admin_user.get("sub")
+    if current_admin_id and str(user_id) == str(current_admin_id):
+        if data.is_active is False:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Anda tidak dapat menonaktifkan akun Admin Anda sendiri.",
+            )
+        if data.is_admin is False:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Anda tidak dapat mencabut hak akses Admin dari akun Anda sendiri.",
+            )
+
     await service.admin_update_customer_status(db, user_id, data)
     return MessageResponse(message="Status akun pelanggan berhasil diperbarui.")
 
