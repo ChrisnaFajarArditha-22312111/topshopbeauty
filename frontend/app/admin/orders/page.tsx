@@ -93,9 +93,9 @@ export default function AdminOrdersPage() {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
-      ord.order_number.toLowerCase().includes(q) ||
-      ord.shipping_recipient_name.toLowerCase().includes(q) ||
-      ord.shipping_phone.toLowerCase().includes(q) ||
+      ord.order_number?.toLowerCase().includes(q) ||
+      ord.shipping_recipient_name?.toLowerCase().includes(q) ||
+      ord.shipping_phone?.toLowerCase().includes(q) ||
       (ord.voucher_code && ord.voucher_code.toLowerCase().includes(q))
     );
   });
