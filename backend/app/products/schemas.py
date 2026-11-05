@@ -109,6 +109,9 @@ class ProductListResponse(BaseModel):
 
 class ProductDetailResponse(ProductListResponse):
     shop_id: Optional[int] = None
+    brand_id: Optional[uuid.UUID] = None
+    category_id: Optional[uuid.UUID] = None
+    sub_category_id: Optional[uuid.UUID] = None
     sub_category_name: Optional[str] = None
     url_produk: Optional[str] = None
     search_document: Optional[str] = None
