@@ -8,6 +8,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy import select, func, desc, and_, or_, update, delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 
 from app.users.models import User
@@ -22,6 +23,9 @@ from app.products.models import (
     SkinConcern,
     Ingredient,
     ProductImage,
+    product_skin_types,
+    product_skin_concerns,
+    product_ingredients,
 )
 from app.orders.models import Order, OrderItem, Payment, Shipment
 from app.promotions.models import Voucher
@@ -216,10 +220,6 @@ async def get_dashboard_stats(db: AsyncSession) -> DashboardStatsResponse:
 async def admin_create_product(db: AsyncSession, data: AdminProductCreate) -> Product:
     """Membuat produk baru lengkap dengan relasi brand, kategori, tipe kulit, dan foto."""
     prod = Product(
-        # Inisialisasi sebelum flush agar pengisian relasi tidak memicu lazy load async.
-        skin_types=[],
-        skin_concerns=[],
-        ingredients=[],
         nama_produk=data.nama_produk,
         brand_id=data.brand_id,
         category_id=data.category_id,
@@ -238,20 +238,24 @@ async def admin_create_product(db: AsyncSession, data: AdminProductCreate) -> Pr
     db.add(prod)
     await db.flush()
 
+    # Insert langsung ke association table menggunakan SQLAlchemy Core insert agar tidak memicu MissingGreenlet
     if data.skin_type_ids:
-        st_stmt = select(SkinType).where(SkinType.id.in_(data.skin_type_ids))
-        st_res = await db.execute(st_stmt)
-        prod.skin_types = list(st_res.scalars().all())
+        for st_id in data.skin_type_ids:
+            await db.execute(
+                product_skin_types.insert().values(product_id=prod.id, skin_type_id=st_id)
+            )
 
     if data.skin_concern_ids:
-        sc_stmt = select(SkinConcern).where(SkinConcern.id.in_(data.skin_concern_ids))
-        sc_res = await db.execute(sc_stmt)
-        prod.skin_concerns = list(sc_res.scalars().all())
+        for sc_id in data.skin_concern_ids:
+            await db.execute(
+                product_skin_concerns.insert().values(product_id=prod.id, skin_concern_id=sc_id)
+            )
 
     if data.ingredient_ids:
-        ing_stmt = select(Ingredient).where(Ingredient.id.in_(data.ingredient_ids))
-        ing_res = await db.execute(ing_stmt)
-        prod.ingredients = list(ing_res.scalars().all())
+        for ing_id in data.ingredient_ids:
+            await db.execute(
+                product_ingredients.insert().values(product_id=prod.id, ingredient_id=ing_id)
+            )
 
     if data.image_urls:
         for idx, url in enumerate(data.image_urls):
@@ -320,6 +324,13 @@ async def admin_update_product(db: AsyncSession, product_id: uuid.UUID, data: Ad
         ing_res = await db.execute(ing_stmt)
         prod.ingredients = list(ing_res.scalars().all())
 
+    if data.image_urls is not None:
+        # Hapus galeri foto lama dan gantikan dengan yang baru
+        await db.execute(delete(ProductImage).where(ProductImage.product_id == prod.id))
+        for idx, url in enumerate(data.image_urls):
+            img = ProductImage(product_id=prod.id, image_url=url, sort_order=idx)
+            db.add(img)
+
     await db.commit()
     reload_stmt = (
         select(Product)
@@ -346,8 +357,15 @@ async def admin_delete_product(db: AsyncSession, product_id: uuid.UUID) -> None:
     if not prod:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Produk tidak ditemukan")
 
-    await db.delete(prod)
-    await db.commit()
+    try:
+        await db.delete(prod)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Produk ini tidak dapat dihapus karena sudah memiliki riwayat transaksi/pesanan. Untuk menghentikan penjualan produk ini, silakan ubah stok menjadi 0.",
+        )
 
 
 # =========================================================
@@ -403,11 +421,13 @@ async def admin_update_order_status(
 ) -> Order:
     """Mengubah status pemrosesan pesanan (processing, shipped, completed, cancelled)."""
     order = await admin_get_order_detail(db, order_id)
+    previous_status = order.status
     order.status = data.status
     if data.notes:
         order.customer_notes = data.notes
 
-    if data.status in ["cancelled", "refunded"]:
+    # Hanya kembalikan stok jika status berubah ke cancelled/refunded DARI status non-cancelled
+    if data.status in ["cancelled", "refunded"] and previous_status not in ["cancelled", "refunded"]:
         for item in order.items:
             prod_stmt = select(Product).where(Product.id == item.product_id)
             prod_res = await db.execute(prod_stmt)
@@ -415,6 +435,15 @@ async def admin_update_order_status(
             if p:
                 p.stok += item.quantity
                 p.terjual = max(0, p.terjual - item.quantity)
+    # Jika pesanan yang dibatalkan diaktifkan kembali
+    elif previous_status in ["cancelled", "refunded"] and data.status not in ["cancelled", "refunded"]:
+        for item in order.items:
+            prod_stmt = select(Product).where(Product.id == item.product_id)
+            prod_res = await db.execute(prod_stmt)
+            p = prod_res.scalar_one_or_none()
+            if p:
+                p.stok = max(0, p.stok - item.quantity)
+                p.terjual += item.quantity
 
     if data.status == "paid" and order.payment:
         order.payment.status = "paid"
@@ -590,8 +619,16 @@ async def admin_update_customer_status(
 # 5. MASTER DATA (BRAND, CATEGORY, INGREDIENTS, SKIN)
 # =========================================================
 async def admin_create_category(db: AsyncSession, data: AdminCategoryCreate) -> Category:
-    slug = _generate_slug(data.name)
-    cat = Category(name=data.name, slug=slug, description=data.description)
+    clean_name = data.name.strip()
+    # Proteksi nama kategori duplikat
+    existing = await db.execute(select(Category).where(func.lower(Category.name) == clean_name.lower()))
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Kategori dengan nama '{clean_name}' sudah ada.",
+        )
+    slug = _generate_slug(clean_name)
+    cat = Category(name=clean_name, slug=slug, description=data.description.strip() if data.description else None)
     db.add(cat)
     await db.commit()
     reload_stmt = select(Category).options(selectinload(Category.sub_categories)).where(Category.id == cat.id)
@@ -600,8 +637,21 @@ async def admin_create_category(db: AsyncSession, data: AdminCategoryCreate) -> 
 
 
 async def admin_create_sub_category(db: AsyncSession, data: AdminSubCategoryCreate) -> SubCategory:
-    slug = _generate_slug(data.name)
-    sub = SubCategory(category_id=data.category_id, name=data.name, slug=slug)
+    clean_name = data.name.strip()
+    # Proteksi sub-kategori duplikat di kategori yang sama
+    existing = await db.execute(
+        select(SubCategory).where(
+            SubCategory.category_id == data.category_id,
+            func.lower(SubCategory.name) == clean_name.lower()
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Sub-kategori '{clean_name}' sudah ada di kategori ini.",
+        )
+    slug = _generate_slug(clean_name)
+    sub = SubCategory(category_id=data.category_id, name=clean_name, slug=slug)
     db.add(sub)
     await db.commit()
     await db.refresh(sub)
@@ -609,8 +659,16 @@ async def admin_create_sub_category(db: AsyncSession, data: AdminSubCategoryCrea
 
 
 async def admin_create_brand(db: AsyncSession, data: AdminBrandCreate) -> Brand:
-    slug = _generate_slug(data.name)
-    brand = Brand(name=data.name, slug=slug, description=data.description, logo_url=data.logo_url)
+    clean_name = data.name.strip()
+    # Proteksi nama brand duplikat
+    existing = await db.execute(select(Brand).where(func.lower(Brand.name) == clean_name.lower()))
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Brand dengan nama '{clean_name}' sudah ada.",
+        )
+    slug = _generate_slug(clean_name)
+    brand = Brand(name=clean_name, slug=slug, description=data.description.strip() if data.description else None, logo_url=data.logo_url)
     db.add(brand)
     await db.commit()
     await db.refresh(brand)
