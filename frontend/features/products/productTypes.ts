@@ -26,6 +26,9 @@ export interface Product {
   id: string;
   item_id?: number | null;
   nama_produk: string;
+  brand_id?: string | null;
+  category_id?: string | null;
+  sub_category_id?: string | null;
   brand_name?: string | null;
   category_name?: string | null;
   harga: number;
