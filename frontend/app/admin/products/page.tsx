@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ProductImage } from "@/components/product/product-card";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -12,8 +12,10 @@ import {
   RefreshCw,
   AlertTriangle,
   Star,
-  CheckCircle2,
   Filter,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,29 +39,47 @@ import {
   useAdminSkinConcerns,
 } from "@/features/admin/useAdmin";
 import { AdminProductCreate } from "@/features/admin/adminTypes";
-import { Product, PaginatedProducts } from "@/features/products/productTypes";
+import { Product, PaginatedProducts, ProductDetail } from "@/features/products/productTypes";
 import { formatRupiah } from "@/lib/utils";
+import ImageUploader from "@/components/admin/ImageUploader";
+import MultiImageUploader from "@/components/admin/MultiImageUploader";
+import { toast } from "sonner";
 
 export default function AdminProductsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Debounce search query untuk server-side searching
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   // Modal State
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
   // Form Fields
   const [namaProduk, setNamaProduk] = useState("");
-  const [harga, setHarga] = useState<number>(0);
-  const [hargaAsli, setHargaAsli] = useState<number | undefined>(undefined);
+  const [harga, setHarga] = useState<number | "">("");
+  const [hargaAsli, setHargaAsli] = useState<number | "">("");
   const [diskonPersen, setDiskonPersen] = useState("");
-  const [stok, setStok] = useState<number>(10);
+  const [stok, setStok] = useState<number | "">(10);
   const [fotoUtama, setFotoUtama] = useState("");
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
   const [urlProduk, setUrlProduk] = useState("");
   const [isSkincare, setIsSkincare] = useState(true);
   const [usageTime, setUsageTime] = useState("Pagi & Malam");
-  const [texture, setTexture] = useState("Cream / Gel");
+  const [texture, setTexture] = useState("Liquid / Serum");
   const [searchDoc, setSearchDoc] = useState("");
 
   const [brandId, setBrandId] = useState("");
@@ -68,7 +88,17 @@ export default function AdminProductsPage() {
   const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>([]);
   const [selectedSkinConcerns, setSelectedSkinConcerns] = useState<string[]>([]);
 
-  // Fetch Products
+  // Master Data Queries
+  const { data: categories } = useAdminCategories();
+  const { data: brands } = useAdminBrands();
+  const { data: skinTypes } = useAdminSkinTypes();
+  const { data: skinConcerns } = useAdminSkinConcerns();
+
+  // Sub-kategori yang sesuai dengan kategori terpilih
+  const activeCategory = categories?.find((c) => c.id === categoryId);
+  const subCategories = activeCategory?.sub_categories || [];
+
+  // Fetch Products dengan Pagination & Server-Side Search (Sort Terbaru)
   const {
     data: productsData,
     isLoading,
@@ -76,22 +106,22 @@ export default function AdminProductsPage() {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ["products", "admin", categoryFilter],
+    queryKey: ["products", "admin", categoryFilter, currentPage, debouncedSearch],
     queryFn: async () => {
-      const url =
-        categoryFilter && categoryFilter !== "all"
-          ? `/products?category=${encodeURIComponent(categoryFilter)}&page_size=100`
-          : `/products?page_size=100`;
-      const response = await api.get<PaginatedProducts>(url);
+      const params = new URLSearchParams();
+      params.append("page", String(currentPage));
+      params.append("page_size", "20");
+      params.append("sort_by", "terbaru");
+      if (categoryFilter && categoryFilter !== "all") {
+        params.append("category", categoryFilter);
+      }
+      if (debouncedSearch) {
+        params.append("q", debouncedSearch);
+      }
+      const response = await api.get<PaginatedProducts>(`/products?${params.toString()}`);
       return response.data;
     },
   });
-
-  // Master Data Queries
-  const { data: categories } = useAdminCategories();
-  const { data: brands } = useAdminBrands();
-  const { data: skinTypes } = useAdminSkinTypes();
-  const { data: skinConcerns } = useAdminSkinConcerns();
 
   // Mutations
   const createProductMutation = useCreateProduct();
@@ -101,77 +131,179 @@ export default function AdminProductsPage() {
   const handleOpenCreateModal = () => {
     setEditingProductId(null);
     setNamaProduk("");
-    setHarga(0);
-    setHargaAsli(undefined);
+    setHarga("");
+    setHargaAsli("");
     setDiskonPersen("");
     setStok(10);
     setFotoUtama("");
+    setGalleryImages([]);
     setUrlProduk("");
     setIsSkincare(true);
     setUsageTime("Pagi & Malam");
-    setTexture("Cream / Gel");
+    setTexture("Liquid / Serum");
     setSearchDoc("");
     setBrandId("");
     setCategoryId("");
     setSubCategoryId("");
     setSelectedSkinTypes([]);
     setSelectedSkinConcerns([]);
+    setIsUploadingImage(false);
     setFormModalOpen(true);
   };
 
-  const handleOpenEditModal = (p: Product) => {
+  const handleOpenEditModal = async (p: Product) => {
     setEditingProductId(p.id);
     setNamaProduk(p.nama_produk);
     setHarga(p.harga);
-    setHargaAsli(p.harga_asli || undefined);
+    setHargaAsli(p.harga_asli || "");
     setDiskonPersen(p.diskon_persen || "");
     setStok(p.stok);
     setFotoUtama(p.foto_utama || "");
     setIsSkincare(p.is_skincare);
     setUsageTime(p.usage_time || "Pagi & Malam");
-    setTexture(p.texture || "Cream / Gel");
+    setTexture(p.texture || "Liquid / Serum");
+    setIsUploadingImage(false);
     setFormModalOpen(true);
+
+    // Load detail lengkap untuk relasi brand, category, skin types, dan skin concerns
+    setIsLoadingDetail(true);
+    try {
+      const res = await api.get<ProductDetail>(`/products/${p.id}`);
+      const detail = res.data;
+
+      // Sinkronisasi ID Brand (utamakan ID langsung dari backend)
+      if (detail.brand_id) {
+        setBrandId(detail.brand_id);
+      } else if (brands && detail.brand_name) {
+        const foundBrand = brands.find((b) => b.name === detail.brand_name);
+        if (foundBrand) setBrandId(foundBrand.id);
+      }
+
+      // Sinkronisasi ID Kategori
+      if (detail.category_id) {
+        setCategoryId(detail.category_id);
+      } else if (categories && detail.category_name) {
+        const foundCat = categories.find((c) => c.name === detail.category_name);
+        if (foundCat) setCategoryId(foundCat.id);
+      }
+
+      // Sinkronisasi Sub-Kategori
+      if (detail.sub_category_id) {
+        setSubCategoryId(detail.sub_category_id);
+      } else if (detail.sub_category_name && categories) {
+        for (const cat of categories) {
+          const foundSub = cat.sub_categories?.find((s) => s.name === detail.sub_category_name);
+          if (foundSub) {
+            setSubCategoryId(foundSub.id);
+            break;
+          }
+        }
+      }
+
+      if (detail.images && detail.images.length > 0) {
+        setGalleryImages(detail.images.map((img) => img.image_url));
+      } else {
+        setGalleryImages([]);
+      }
+
+      if (detail.skin_types && detail.skin_types.length > 0) {
+        setSelectedSkinTypes(detail.skin_types.map((st) => st.id));
+      } else {
+        setSelectedSkinTypes([]);
+      }
+
+      if (detail.skin_concerns && detail.skin_concerns.length > 0) {
+        setSelectedSkinConcerns(detail.skin_concerns.map((sc) => sc.id));
+      } else {
+        setSelectedSkinConcerns([]);
+      }
+
+      if (detail.usage_time) setUsageTime(detail.usage_time);
+      if (detail.texture) setTexture(detail.texture);
+    } catch {
+      // Jika gagal memuat detail, form tetap bisa digunakan
+    } finally {
+      setIsLoadingDetail(false);
+    }
   };
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!namaProduk.trim() || harga <= 0) return;
+
+    const cleanNama = namaProduk.trim();
+    if (!cleanNama) {
+      toast.error("Nama produk tidak boleh kosong!");
+      return;
+    }
+
+    const numHarga = typeof harga === "number" ? harga : Number(harga);
+    if (!numHarga || numHarga <= 0) {
+      toast.error("Harga jual harus lebih besar dari 0!");
+      return;
+    }
+
+    const numHargaAsli = hargaAsli !== "" && hargaAsli !== undefined ? Number(hargaAsli) : undefined;
+    if (numHargaAsli !== undefined && numHargaAsli < numHarga) {
+      toast.error("Harga Asli (coret) tidak boleh lebih kecil dari harga jual!");
+      return;
+    }
+
+    if (isUploadingImage || isUploadingGallery) {
+      toast.warning("Harap tunggu hingga proses upload gambar selesai!");
+      return;
+    }
+
+    const numStok = typeof stok === "number" ? Math.max(0, stok) : Math.max(0, Number(stok) || 0);
+
+    // Hitung persentase diskon otomatis jika harga asli diisi
+    let calculatedDiskonPersen: string | undefined = undefined;
+    if (numHargaAsli && numHargaAsli > numHarga) {
+      calculatedDiskonPersen = `${Math.round(((numHargaAsli - numHarga) / numHargaAsli) * 100)}%`;
+    }
 
     const payload: AdminProductCreate = {
-      nama_produk: namaProduk.trim(),
-      harga: Number(harga),
-      harga_asli: hargaAsli ? Number(hargaAsli) : undefined,
-      diskon_persen: diskonPersen ? diskonPersen : undefined,
-      stok: Number(stok) || 0,
+      nama_produk: cleanNama,
+      harga: numHarga,
+      harga_asli: numHargaAsli,
+      diskon_persen: calculatedDiskonPersen,
+      stok: numStok,
       foto_utama: fotoUtama.trim() || undefined,
       url_produk: urlProduk.trim() || undefined,
       is_skincare: isSkincare,
       usage_time: usageTime.trim() || undefined,
       texture: texture.trim() || undefined,
       search_document: searchDoc.trim() || undefined,
-      brand_id: brandId || undefined,
-      category_id: categoryId || undefined,
-      sub_category_id: subCategoryId || undefined,
+      brand_id: brandId.trim() ? brandId.trim() : undefined,
+      category_id: categoryId.trim() ? categoryId.trim() : undefined,
+      sub_category_id: subCategoryId.trim() ? subCategoryId.trim() : undefined,
       skin_type_ids: selectedSkinTypes.length > 0 ? selectedSkinTypes : undefined,
       skin_concern_ids: selectedSkinConcerns.length > 0 ? selectedSkinConcerns : undefined,
+      image_urls: galleryImages,
     };
 
-    if (editingProductId) {
-      await updateProductMutation.mutateAsync({
-        id: editingProductId,
-        data: payload,
-      });
-    } else {
-      await createProductMutation.mutateAsync(payload);
+    try {
+      if (editingProductId) {
+        await updateProductMutation.mutateAsync({
+          id: editingProductId,
+          data: payload,
+        });
+      } else {
+        await createProductMutation.mutateAsync(payload);
+      }
+      setFormModalOpen(false);
+    } catch {
+      // Toast notifikasi sukses & error sudah otomatis ditangani oleh useAdmin hook
     }
-
-    setFormModalOpen(false);
   };
 
   const handleDelete = async () => {
     if (!deleteTargetId) return;
-    await deleteProductMutation.mutateAsync(deleteTargetId);
-    setDeleteTargetId(null);
+    try {
+      await deleteProductMutation.mutateAsync(deleteTargetId);
+      setDeleteTargetId(null);
+    } catch {
+      // Toast error sudah ditangani oleh useAdmin hook
+    }
   };
 
   const toggleSkinType = (id: string) => {
@@ -186,15 +318,7 @@ export default function AdminProductsPage() {
     );
   };
 
-  const filteredProducts = productsData?.items?.filter((prod) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      prod.nama_produk.toLowerCase().includes(q) ||
-      (prod.brand_name && prod.brand_name.toLowerCase().includes(q))
-    );
-  });
-
+  const productsList = productsData?.items || [];
   const isSaving = createProductMutation.isPending || updateProductMutation.isPending;
 
   return (
@@ -239,18 +363,24 @@ export default function AdminProductsPage() {
         <div className="relative w-full sm:max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <Input
-            placeholder="Cari nama produk kosmetik atau brand..."
+            placeholder="Cari semua produk (nama, brand, dll)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 h-10 rounded-xl bg-slate-50 border-slate-200 text-xs focus-visible:ring-primary"
           />
+          {isFetching && (
+            <Loader2 className="w-4 h-4 text-slate-400 animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />
+          )}
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Filter className="w-4 h-4 text-slate-400 shrink-0" />
           <select
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value);
+              setCurrentPage(1);
+            }}
             className="h-10 px-3 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:ring-2 focus:ring-primary w-full sm:w-auto"
           >
             <option value="all">Semua Kategori</option>
@@ -278,7 +408,7 @@ export default function AdminProductsPage() {
               Coba Lagi
             </Button>
           </div>
-        ) : filteredProducts && filteredProducts.length > 0 ? (
+        ) : productsList && productsList.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200">
@@ -293,7 +423,7 @@ export default function AdminProductsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredProducts.map((p) => (
+                {productsList.map((p) => (
                   <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
@@ -388,6 +518,40 @@ export default function AdminProductsPage() {
         )}
       </div>
 
+      {/* Pagination Controls */}
+      {productsData && productsData.total_pages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl border border-slate-200 px-6 py-4 shadow-xs">
+          <p className="text-xs text-slate-500">
+            Halaman <span className="font-semibold text-slate-700">{productsData.page}</span> dari{" "}
+            <span className="font-semibold text-slate-700">{productsData.total_pages}</span> (Total{" "}
+            <span className="font-semibold text-slate-700">{productsData.total}</span> produk)
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage <= 1 || isFetching}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              className="rounded-full text-xs gap-1 border-slate-200"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" /> Sebelumnya
+            </Button>
+            <span className="text-xs font-semibold px-2 text-slate-700">
+              {currentPage} / {productsData.total_pages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage >= productsData.total_pages || isFetching}
+              onClick={() => setCurrentPage((prev) => Math.min(productsData.total_pages, prev + 1))}
+              className="rounded-full text-xs gap-1 border-slate-200"
+            >
+              Selanjutnya <ChevronRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Modal Form Produk (Tambah & Edit) */}
       <Dialog open={formModalOpen} onOpenChange={setFormModalOpen}>
         <DialogContent className="sm:max-w-2xl bg-white rounded-2xl max-h-[90vh] p-0 overflow-hidden flex flex-col gap-0 border border-slate-100 shadow-2xl">
@@ -395,186 +559,285 @@ export default function AdminProductsPage() {
             <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
               {editingProductId ? "Edit Data Produk" : "Tambah Produk Baru"}
+              {isLoadingDetail && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmitForm} className="flex flex-col flex-1 min-h-0 overflow-hidden">
             <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs overscroll-contain">
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">Nama Produk *</label>
-              <Input
-                required
-                placeholder="Contoh: Garnier Bright Complete Vitamin C Serum..."
-                value={namaProduk}
-                onChange={(e) => setNamaProduk(e.target.value)}
-                className="text-xs rounded-xl bg-slate-50 border-slate-200"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Harga Jual (Rp) *</label>
+                <label className="font-semibold text-slate-700 block mb-1">Nama Produk *</label>
                 <Input
-                  type="number"
                   required
-                  min={1}
-                  value={harga}
-                  onChange={(e) => setHarga(Number(e.target.value))}
+                  placeholder="Contoh: Garnier Bright Complete Vitamin C Serum..."
+                  value={namaProduk}
+                  onChange={(e) => setNamaProduk(e.target.value)}
                   className="text-xs rounded-xl bg-slate-50 border-slate-200"
                 />
               </div>
 
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Harga Asli / Coret (Rp)</label>
-                <Input
-                  type="number"
-                  min={0}
-                  placeholder="Opsional jika promo"
-                  value={hargaAsli || ""}
-                  onChange={(e) => setHargaAsli(e.target.value ? Number(e.target.value) : undefined)}
-                  className="text-xs rounded-xl bg-slate-50 border-slate-200"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Stok Awal *</label>
-                <Input
-                  type="number"
-                  required
-                  min={0}
-                  value={stok}
-                  onChange={(e) => setStok(Number(e.target.value))}
-                  className="text-xs rounded-xl bg-slate-50 border-slate-200"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Brand</label>
-                <select
-                  value={brandId}
-                  onChange={(e) => setBrandId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">-- Pilih Brand --</option>
-                  {brands?.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Kategori</label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">-- Pilih Kategori --</option>
-                  {categories?.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">URL Foto Utama</label>
-              <Input
-                placeholder="https://images.unsplash.com/..."
-                value={fotoUtama}
-                onChange={(e) => setFotoUtama(e.target.value)}
-                className="text-xs rounded-xl bg-slate-50 border-slate-200"
-              />
-              <p className="mt-1 text-xs text-slate-500">
-                Gunakan URL HTTPS langsung ke file gambar, bukan tautan halaman produk atau hasil pencarian.
-              </p>
-              {fotoUtama.trim().startsWith("https://") && (
-                <div className="relative mt-2 h-24 w-24 overflow-hidden rounded-lg border border-slate-200">
-                  <ProductImage src={fotoUtama.trim()} alt="Pratinjau foto produk" fill className="object-contain" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Harga Jual (Rp) *</label>
+                  <Input
+                    type="number"
+                    required
+                    min={1}
+                    placeholder="Contoh: 85000"
+                    value={harga}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setHarga(val === "" ? "" : Math.max(0, Number(val)));
+                    }}
+                    className="text-xs rounded-xl bg-slate-50 border-slate-200"
+                  />
                 </div>
-              )}
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Waktu Pakai</label>
-                <Input
-                  placeholder="Pagi & Malam / Pagi Saja"
-                  value={usageTime}
-                  onChange={(e) => setUsageTime(e.target.value)}
-                  className="text-xs rounded-xl bg-slate-50 border-slate-200"
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700 block">Harga Asli / Coret (Rp)</label>
+                    {typeof harga === "number" && typeof hargaAsli === "number" && hargaAsli > harga && (
+                      <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
+                        Diskon {Math.round(((hargaAsli - harga) / hargaAsli) * 100)}%
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="Opsional jika promo"
+                    value={hargaAsli}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setHargaAsli(val === "" ? "" : Math.max(0, Number(val)));
+                    }}
+                    className="text-xs rounded-xl bg-slate-50 border-slate-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Stok Awal *</label>
+                  <Input
+                    type="number"
+                    required
+                    min={0}
+                    value={stok}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setStok(val === "" ? "" : Math.max(0, Number(val)));
+                    }}
+                    className="text-xs rounded-xl bg-slate-50 border-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Brand</label>
+                  <select
+                    value={brandId}
+                    onChange={(e) => setBrandId(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">-- Pilih Brand --</option>
+                    {brands?.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Kategori</label>
+                  <select
+                    value={categoryId}
+                    onChange={(e) => {
+                      setCategoryId(e.target.value);
+                      setSubCategoryId("");
+                    }}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">-- Pilih Kategori --</option>
+                    {categories?.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Sub-Kategori</label>
+                  <select
+                    value={subCategoryId}
+                    onChange={(e) => setSubCategoryId(e.target.value)}
+                    disabled={!categoryId || subCategories.length === 0}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:ring-2 focus:ring-primary disabled:opacity-50"
+                  >
+                    <option value="">
+                      {!categoryId
+                        ? "-- Pilih Kategori Dahulu --"
+                        : subCategories.length === 0
+                        ? "-- Tidak Ada Sub-Kategori --"
+                        : "-- Pilih Sub-Kategori --"}
+                    </option>
+                    {subCategories.map((sub) => (
+                      <option key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Komponen Upload Foto dengan Supabase Storage */}
+              <div className="space-y-4">
+                <ImageUploader
+                  value={fotoUtama}
+                  onChange={(url) => setFotoUtama(url)}
+                  onUploadingChange={(uploading) => setIsUploadingImage(uploading)}
+                  label="Foto Utama Produk *"
+                />
+
+                <MultiImageUploader
+                  values={galleryImages}
+                  onChange={(urls) => setGalleryImages(urls)}
+                  onUploadingChange={(uploading) => setIsUploadingGallery(uploading)}
+                  label="Galeri Foto Tambahan (Bisa Banyak)"
+                  maxFiles={6}
                 />
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Waktu Pakai
+                  </label>
+                  <select
+                    value={usageTime}
+                    onChange={(e) => setUsageTime(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="Pagi & Malam">Pagi & Malam (Universal)</option>
+                    <option value="Pagi (AM)">Pagi Saja (AM - Sunscreen, Day Cream, dll)</option>
+                    <option value="Malam (PM)">Malam Saja (PM - Retinol, Night Cream, dll)</option>
+                    <option value="Fleksibel / Sesuai Kebutuhan">Fleksibel / Sesuai Kebutuhan</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Tekstur Produk
+                  </label>
+                  <select
+                    value={
+                      [
+                        "Liquid / Serum",
+                        "Cream",
+                        "Gel",
+                        "Foam / Gel",
+                        "Liquid / Water",
+                        "Lotion",
+                        "Mist / Spray",
+                        "Powder",
+                        "Balm",
+                      ].includes(texture)
+                        ? texture
+                        : "custom"
+                    }
+                    onChange={(e) => {
+                      if (e.target.value === "custom") {
+                        setTexture("");
+                      } else {
+                        setTexture(e.target.value);
+                      }
+                    }}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="Liquid / Serum">Liquid / Serum</option>
+                    <option value="Cream">Cream</option>
+                    <option value="Gel">Gel</option>
+                    <option value="Foam / Gel">Foam / Gel (Pembersih)</option>
+                    <option value="Liquid / Water">Liquid / Water (Toner/Micellar)</option>
+                    <option value="Lotion">Lotion</option>
+                    <option value="Mist / Spray">Mist / Spray</option>
+                    <option value="Powder">Powder (Bedak / Loose Powder)</option>
+                    <option value="Balm">Balm / Cleansing Balm</option>
+                    <option value="custom">-- Ketik Tekstur Manual... --</option>
+                  </select>
+                  {(![
+                    "Liquid / Serum",
+                    "Cream",
+                    "Gel",
+                    "Foam / Gel",
+                    "Liquid / Water",
+                    "Lotion",
+                    "Mist / Spray",
+                    "Powder",
+                    "Balm",
+                  ].includes(texture) || texture === "") && (
+                    <Input
+                      placeholder="Masukkan tekstur khusus..."
+                      value={texture}
+                      onChange={(e) => setTexture(e.target.value)}
+                      className="text-xs rounded-xl bg-slate-50 border-slate-200 mt-1.5"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Checklist Skin Types */}
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Tekstur Produk</label>
-                <Input
-                  placeholder="Serum / Liquid / Cream / Gel"
-                  value={texture}
-                  onChange={(e) => setTexture(e.target.value)}
-                  className="text-xs rounded-xl bg-slate-50 border-slate-200"
-                />
+                <label className="font-semibold text-slate-700 block mb-1.5">
+                  Kecocokan Jenis Kulit (Skin Types)
+                </label>
+                <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  {skinTypes?.map((st) => {
+                    const isChecked = selectedSkinTypes.includes(st.id);
+                    return (
+                      <button
+                        type="button"
+                        key={st.id}
+                        onClick={() => toggleSkinType(st.id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          isChecked
+                            ? "bg-primary text-white font-semibold"
+                            : "bg-white text-slate-700 border border-slate-200 hover:border-pink-200"
+                        }`}
+                      >
+                        {st.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-            {/* Checklist Skin Types */}
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1.5">
-                Kecocokan Jenis Kulit (Skin Types)
-              </label>
-              <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                {skinTypes?.map((st) => {
-                  const isChecked = selectedSkinTypes.includes(st.id);
-                  return (
-                    <button
-                      type="button"
-                      key={st.id}
-                      onClick={() => toggleSkinType(st.id)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                        isChecked
-                          ? "bg-primary text-white font-semibold"
-                          : "bg-white text-slate-700 border border-slate-200 hover:border-pink-200"
-                      }`}
-                    >
-                      {st.name}
-                    </button>
-                  );
-                })}
+              {/* Checklist Skin Concerns */}
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1.5">
+                  Solusi Masalah Kulit (Skin Concerns)
+                </label>
+                <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  {skinConcerns?.map((sc) => {
+                    const isChecked = selectedSkinConcerns.includes(sc.id);
+                    return (
+                      <button
+                        type="button"
+                        key={sc.id}
+                        onClick={() => toggleSkinConcern(sc.id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          isChecked
+                            ? "bg-primary text-white font-semibold"
+                            : "bg-white text-slate-700 border border-slate-200 hover:border-pink-200"
+                        }`}
+                      >
+                        {sc.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-
-            {/* Checklist Skin Concerns */}
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1.5">
-                Solusi Masalah Kulit (Skin Concerns)
-              </label>
-              <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                {skinConcerns?.map((sc) => {
-                  const isChecked = selectedSkinConcerns.includes(sc.id);
-                  return (
-                    <button
-                      type="button"
-                      key={sc.id}
-                      onClick={() => toggleSkinConcern(sc.id)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                        isChecked
-                          ? "bg-primary text-white font-semibold"
-                          : "bg-white text-slate-700 border border-slate-200 hover:border-pink-200"
-                      }`}
-                    >
-                      {sc.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             </div>
 
             <DialogFooter className="p-4 sm:p-6 py-4 border-t border-slate-100 bg-slate-50/80 shrink-0">
@@ -590,10 +853,20 @@ export default function AdminProductsPage() {
               <Button
                 type="submit"
                 size="sm"
-                disabled={isSaving}
-                className="rounded-full bg-primary hover:bg-rose-600 text-white"
+                disabled={isSaving || isUploadingImage || isUploadingGallery}
+                className="rounded-full bg-primary hover:bg-rose-600 text-white gap-1.5"
               >
-                {isSaving ? "Menyimpan..." : "Simpan Produk"}
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Menyimpan...
+                  </>
+                ) : isUploadingImage || isUploadingGallery ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Mengupload Gambar...
+                  </>
+                ) : (
+                  "Simpan Produk"
+                )}
               </Button>
             </DialogFooter>
           </form>
